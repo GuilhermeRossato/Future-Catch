@@ -61,10 +61,10 @@ function CanvasController(recipient, width, height) {
 		
 		recipient.appendChild(this.canvas);
 		console.log("Canvas appended to", recipient.id ,"with size",local_width, local_height);
-		
-		//document.addEventListener("mousemove", this.onMouseMove, false);
-		//document.addEventListener("mousedown", this.onMouseDown, false);
-		//document.addEventListener("mouseup", this.onMouseUp, false);
+		var holdThis = this;
+		document.addEventListener("mousemove", function(ev) { CanvasController.prototype.onMouseMove.call(holdThis, ev); }, false);
+		document.addEventListener("mousedown", function(ev) { CanvasController.prototype.onMouseDown.call(holdThis, ev); }, false);
+		document.addEventListener("mouseup", function(ev) { CanvasController.prototype.onMouseUp.call(holdThis, ev); }, false);
 	} else
 		console.error("Canvas recipient:" , recipient, "should be a HTMLDivElement instance. (CanvasController)");
 }
@@ -73,16 +73,35 @@ CanvasController.prototype = {
 	constructor: CanvasController,
 	events: new Array(),
 	onMouseMove: function (ev) {
-		if (this.events["mousemove"] instanceof Array)
-			this.events["mousemove"].forEach(obj => console.log(obj));
-		
+		//console.log(ev);
+		//if (this.events["mousemove"] instanceof Array)
+		//	this.events["mousemove"].every(function (obj) { return obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop) });
 		//mouse.vec_pos.x = ev.clientX-canvas.offsetLeft;
 		//mouse.vec_pos.y = ev.clientY-canvas.offsetTop;
 		
 	},
+	onMouseDown: function (ev) {
+		var cnt = [];
+		var th = [];
+		th.push(function() {
+			cnt.push("aa1");
+			return true;
+		});
+		th.push(function() {
+			cnt.push("bb0");
+			return false;
+		});
+		th.push(function() {
+			cnt.push("cc0");
+			return false;
+		});
+	},
+	onMouseUp: function (ev) {
+		
+	},
 	addEventListener: function (type, listener) {
 		if (typeof(type) === "string") {
-			let id = eventCandidates.indexof(type.toLowerCase());
+			var id = eventCandidates.indexOf(type.toLowerCase());
 			if (id !== -1) {
 				if (this.events[type.toLowerCase()] === undefined) {
 					this.events[type.toLowerCase()] = [listener];
