@@ -1,23 +1,27 @@
-/* Usage */
-/* 
+/*	CanvasController.js - Created by GuilhermeRossato 01/2016
+ * 
  * Create the object when then the recipient you want the canvas in is loaded: 
  *  = new CanvasController(document.getElementById("recipient"));
- * 
+ * --------------------------------------------------------------------------------------------------------
  * Constant Properties:
- *	.canvas;		instance of HTMLCanvasElement
- *	.ctx;			instanceof CanvasRenderingContext2D 
- * 	
+ *	.canvas;		instance of HTMLCanvasElement (HTML5)
+ *	.ctx;			instanceof CanvasRenderingContext2D
+ * --------------------------------------------------------------------------------------------------------
  * Normal Properties:
- * 
- * 
+ * 	.mouse.x		Number, mouse's horizontal position in pixels relative to the canvas, 0 is left, canvas width is right
+ * 	.mouse.y		Number, mouse's vertical position in pixels relative to the canvas, 0 is top, canvas height is bottom
+ *  .timestamper	Instance of Timestamper if it is declared, for usage see Timestamper.js
+ * --------------------------------------------------------------------------------------------------------
  * Methods:
  * 	constructor(recipient[, width, height]);	Class Constructor ( new CanvasController(...) )
- *		recipient	instance of HTMLDivElement for the canvas to be put at
+ *		recipient	Instance of HTMLDivElement for the canvas to be put at
  * 		width,...	starting size of the canvas element in pixels (default 960x480 px)
+ * 
+ * 	.print(...)									Output/Debug helper, shows text in canvas at bottom right
  * 
  * 	.addEventListener(type, listener);			Sends a call to 'listener' before processing a specific event
  * 		type (string): "mousemove", "mousedown", "mouseup", "mouseclick", "keydown", "keyup"
- * 			listener (function): function to call when event happens
+ * 		listener (function): function to call when event happens
  * 		WARNING: listener MUST return logicly true value, otherwise the call will be aborted
  *		WARNING: useCapture	(from original addEventListener) IS NOT implemented and WILL be ignored
  * 
@@ -27,8 +31,10 @@
  * 	.clearEventListener(type)
  * 		type (string): "mousemove", "mousedown", "mouseup", "mouseclick", "keydown", "keyup"
  * 		Nothing
+ * --------------------------------------------------------------------------------------------------------
  * "Private" Properties:
- * .events;		instance of Array with keys corresponding to event types (string) to help with event listeners.
+ *		.events;		Instance of Array with keys corresponding to event types (string) to help with event listeners.
+ * 		.prints;		Instance of Array with objects corresponding to debug information displayed on screen
  */
 
 var eventCandidates = ["mousemove", "mousedown", "mouseup", "mouseclick", "keydown", "keyup"];
@@ -51,7 +57,10 @@ function CanvasController(recipient, width, height) {
 		this.canvas.setAttribute('id','canvas');
 		this.canvas.width = local_width;
 		this.canvas.height = local_height;
-		this.canvas.oncontextmenu= function () { return false }
+		this.canvas.oncontextmenu = function () { return false; };
+		recipient.appendChild(this.canvas);
+		console.log("Canvas appended to", recipient.id ,"with size",local_width, local_height);
+		
 		Object.defineProperty(this,"ctx",{
 			configurable: false,
 			enumerable: false,
@@ -59,12 +68,15 @@ function CanvasController(recipient, width, height) {
 			writable: false
 		});
 		
-		recipient.appendChild(this.canvas);
-		console.log("Canvas appended to", recipient.id ,"with size",local_width, local_height);
 		var holdThis = this;
 		document.addEventListener("mousemove", function(ev) { CanvasController.prototype.onMouseMove.call(holdThis, ev); }, false);
 		document.addEventListener("mousedown", function(ev) { CanvasController.prototype.onMouseDown.call(holdThis, ev); }, false);
 		document.addEventListener("mouseup", function(ev) { CanvasController.prototype.onMouseUp.call(holdThis, ev); }, false);
+		
+		if (Timestamper) {
+			this.timestamper = new Timestamper(60,delta => console.log("elapsed!",delta));
+		}
+		
 	} else
 		console.error("Canvas recipient:" , recipient, "should be a HTMLDivElement instance. (CanvasController)");
 }
@@ -72,29 +84,41 @@ function CanvasController(recipient, width, height) {
 CanvasController.prototype = {
 	constructor: CanvasController,
 	events: new Array(),
+	prints: new Array(),
+	mouse: {x:960/2, y:480/2},
+	
 	onMouseMove: function (ev) {
-		if (this.events["mousemove"] instanceof Array)
-			if (this.events["mousemove"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop)))
-				console.log("Process Movement");
+		if (!(this.events["mousemove"] instanceof Array)||(this.events["mousemove"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop))))
+			console.log("Process Mouse Move");
 	},
 	onMouseDown: function (ev) {
-		if (this.events["mousedown"] instanceof Array) {
-			if (this.events["mousedown"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop)))
-				console.log("Process Down"); // PROCESS!!
-			else
-				console.log("Do not process Down")
-		} else
-			console.log("Process Down"); // TWO PROCESS in diferent places!
+		if (!(this.events["mousedown"] instanceof Array)||(this.events["mousedown"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop))))
+			console.log("Process Mouse Down");
 	},
 	onMouseUp: function (ev) {
-		
+		if (!(this.events["mouseup"] instanceof Array)||(this.events["mouseup"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop))))
+			console.log("Process Mouse Up");
+	},
+	print: function() {
+		if (this.prints instanceof Array) {
+			var i;
+			for (i=0;i<this.prints.length;i++)
+				if (!this.prints[i].enabled)
+					break;
+			if (i > 9) i = 9;
+			this.prints[i] = {enabled: true, life:10000, text:""};
+			for (i=0;i<arguments.length;i++) {
+				text += toString(arguments[i]);
+			}
+		} else 
+			console.error("Error: This instance doesn't have a valid \".prints\" property");
 	},
 	addEventListener: function (type, listener) {
 		if (typeof(type) === "string") {
 			var id = eventCandidates.indexOf(type.toLowerCase());
 			if (id !== -1) {
 				if (this.events[type.toLowerCase()] === undefined) {
-					this.events[type.toLowerCase()] = [listener];
+					this.events[type.toLowerCase()] = [listener]; // Create if it's empty
 				} else {
 					id = this.events[type.toLowerCase()].indexOf(listener);
 					if (id === -1) {
