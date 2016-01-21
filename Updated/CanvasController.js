@@ -73,28 +73,18 @@ CanvasController.prototype = {
 	constructor: CanvasController,
 	events: new Array(),
 	onMouseMove: function (ev) {
-		//console.log(ev);
-		//if (this.events["mousemove"] instanceof Array)
-		//	this.events["mousemove"].every(function (obj) { return obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop) });
-		//mouse.vec_pos.x = ev.clientX-canvas.offsetLeft;
-		//mouse.vec_pos.y = ev.clientY-canvas.offsetTop;
-		
+		if (this.events["mousemove"] instanceof Array)
+			if (this.events["mousemove"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop)))
+				console.log("Process Movement");
 	},
 	onMouseDown: function (ev) {
-		var cnt = [];
-		var th = [];
-		th.push(function() {
-			cnt.push("aa1");
-			return true;
-		});
-		th.push(function() {
-			cnt.push("bb0");
-			return false;
-		});
-		th.push(function() {
-			cnt.push("cc0");
-			return false;
-		});
+		if (this.events["mousedown"] instanceof Array) {
+			if (this.events["mousedown"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop)))
+				console.log("Process Down"); // PROCESS!!
+			else
+				console.log("Do not process Down")
+		} else
+			console.log("Process Down"); // TWO PROCESS in diferent places!
 	},
 	onMouseUp: function (ev) {
 		
@@ -106,7 +96,7 @@ CanvasController.prototype = {
 				if (this.events[type.toLowerCase()] === undefined) {
 					this.events[type.toLowerCase()] = [listener];
 				} else {
-					id = this.events[type.toLowerCase()].indexof(listener);
+					id = this.events[type.toLowerCase()].indexOf(listener);
 					if (id === -1) {
 						this.events[type.toLowerCase()].push(listener);
 					} else
@@ -120,9 +110,9 @@ CanvasController.prototype = {
 			console.error("First argument (",typeof(type),") is supposed to be a string");
 	},
 	removeEventListener: function (type, listener) {
-		if ((typeof(type) === "string")&&(eventCandidates.indexof(type.toLowerCase()) !== -1)) {
+		if ((typeof(type) === "string")&&(eventCandidates.indexOf(type.toLowerCase()) !== -1)) {
 			if (this.events[type.toLowerCase()] instanceof Array) {
-				var id = this.events[type.toLowerCase()].indexof(listener); 
+				var id = this.events[type.toLowerCase()].indexOf(listener); 
 				if (id !== -1) {
 					console.log("deleting id ",id);
 					delete this.events[type.toLowerCase()][id];
@@ -133,7 +123,7 @@ CanvasController.prototype = {
 			//First parameter must be one from the "eventCandidates" variable (global constant)
 	},
 	clearEventListener: function (type) {
-		if ((typeof(type) === "string")&&(eventCandidates.indexof(type.toLowerCase()) !== -1)) {
+		if ((typeof(type) === "string")&&(eventCandidates.indexOf(type.toLowerCase()) !== -1)) {
 			this.events[type.toLowerCase()] = undefined;
 		} else
 			console.error("No event of type \"" + type.toLowerCase() + "\" in CanvasController");
