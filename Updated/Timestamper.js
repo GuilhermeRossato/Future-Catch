@@ -16,13 +16,6 @@
  * be the whole number 2, the left over (36%16.6 = 2,66ms) will be added at the next callback.
  * 
  * --------------------------------------------------------------------------------------------------------
- * Normal Properties:
- *	.lastEvent			Number, contains numeric date of the last time a pair of update was sent
- *	.chunksElapsed		Number, contains how many chunks have elapsed since last the creation of the class
- * 	.updateCallback		Holds the function to call everytime
- *	.interval				interval interval, changing this will cause a RESET on chunksElapsed.
- * 
- * --------------------------------------------------------------------------------------------------------
  * Methods:
  * 	constructor(interval[, updateCallback]);			Class Constructor ( new Timestamper(...) )
  * 		interval			Number, time in miliseconds of a time event
@@ -30,6 +23,13 @@
  * 
  *	reset([interval])									Resets the updateCallback, leftover and potentially changes interval.
  * 		interval			If specified, the time-chunk interval will be changed the same way as it was created
+ * 
+ * --------------------------------------------------------------------------------------------------------
+ * Normal Properties:
+ *	.lastEvent			Number, contains numeric date of the last time a pair of update was sent
+ *	.chunksElapsed		Number, contains how many chunks have elapsed since last the creation of the class
+ * 	.updateCallback		Holds the function to call everytime
+ *	.interval			Interval, changing this value will cause a RESET on chunksElapsed.
  * 
  * --------------------------------------------------------------------------------------------------------
  * "Private" Properties:
@@ -40,11 +40,14 @@
 function Timestamper(interval, updateCallback, drawCallback) {
 	if (typeof(interval) === "number") {
 		var ctf = interval;
+		var leftover = 0;
+		var holdThis = this;
+		
 		Object.defineProperty(this,"interval",{
 			configurable: false,
 			enumerable: false,
 			get: function() { return ctf; },
-			set: function(v) { if (typeof(v) === "number") { ctf = v; this.chunksElapsed = 0;  } else console.error("Interval parameter must be a number"); }
+			set: function(v) { if (typeof(v) === "number") { ctf = v; this.chunksElapsed = 0; leftover = 0;  } else console.error("Interval parameter must be a number"); }
 		});
 		this.interval = 1;
 		Object.defineProperty(this,"updateCallback",{
@@ -66,8 +69,6 @@ function Timestamper(interval, updateCallback, drawCallback) {
 			writable: true
 		});
 		
-		var holdThis = this;
-		var leftover = 0;
 		
 		function step() {
 			if ((holdThis instanceof Timestamper)&&(typeof(holdThis.lastEvent)==="number")&&(typeof(leftover)==="number")&&(typeof(ctf)==="number"))

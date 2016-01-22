@@ -1,7 +1,34 @@
 /*	CanvasController.js - Created by GuilhermeRossato 01/2016
  * 
+ * Requires: Timestamper.js (Optional)
+ * 
  * Create the object when then the recipient you want the canvas in is loaded: 
  *  = new CanvasController(document.getElementById("recipient"));
+ * --------------------------------------------------------------------------------------------------------
+ * Methods:
+ * 	constructor(recipient[, width, height]);	Class Constructor ( new CanvasController(...) )
+ *		recipient	(HTMLDivElement)	actual <div> element for the canvas to be put at
+ * 		width		(number)			Size of the canvas element in pixels (default 960px)
+ * 		height		(number)			Size of the canvas element in pixels (default 480 px)
+ * 
+ * 	.print(...)									Output/Debug helper, shows text in canvas at bottom right
+ * 
+ * 	.addEventListener(type, listener);			Sends a call to 'listener' before processing a specific event
+ * 		type		(string): "mousemove", "mousedown", "mouseup", "mouseclick", "keydown", "keyup"
+ * 		listener	(function): function to call when event happens
+ * 		WARNING: listener MUST return logicly true value, otherwise the call will be aborted
+ *		WARNING: useCapture	(from original addEventListener) IS NOT implemented and WILL be ignored
+ * 
+ * 	.removeEventListener(type, listener);		Removes a specific listener function from a specific event type
+ * 		same as addEventListener
+ * 
+ * 	.clearEventListener(type)					Clears all listener of an event type
+ * 		type		(string) 		Candidates: "mousemove", "mousedown", "mouseup", "mouseclick", "keydown", "keyup"
+ * 
+ *  .addButton(guiButton)						Adds a button to the CanvasController, created with GuiButton.js
+ * 		guiButton	(GuiButton)		Button to be added
+ * 		
+ * 		
  * --------------------------------------------------------------------------------------------------------
  * Constant Properties:
  *	.canvas;		instance of HTMLCanvasElement (HTML5)
@@ -10,31 +37,17 @@
  * Normal Properties:
  * 	.mouse.x		Number, mouse's horizontal position in pixels relative to the canvas, 0 is left, canvas width is right
  * 	.mouse.y		Number, mouse's vertical position in pixels relative to the canvas, 0 is top, canvas height is bottom
+ * 	.mouse.left		Boolean, whenever the left mouse button is being pressed
+ * 	.mouse.middle	Boolean, whenever the middle mouse button is being pressed
+ * 	.mouse.right	Boolean, whenever the right mouse button is being pressed
  *  .timestamper	Instance of Timestamper if it is declared, for usage see Timestamper.js
+ *  .multiplier		Number, default 1.0, number in which deltas are multiplied before being sent to object's update/draw functions
  * --------------------------------------------------------------------------------------------------------
- * Methods:
- * 	constructor(recipient[, width, height]);	Class Constructor ( new CanvasController(...) )
- *		recipient	Instance of HTMLDivElement for the canvas to be put at
- * 		width,...	starting size of the canvas element in pixels (default 960x480 px)
- * 
- * 	.print(...)									Output/Debug helper, shows text in canvas at bottom right
- * 
- * 	.addEventListener(type, listener);			Sends a call to 'listener' before processing a specific event
- * 		type (string): "mousemove", "mousedown", "mouseup", "mouseclick", "keydown", "keyup"
- * 		listener (function): function to call when event happens
- * 		WARNING: listener MUST return logicly true value, otherwise the call will be aborted
- *		WARNING: useCapture	(from original addEventListener) IS NOT implemented and WILL be ignored
- * 
- * 	.removeEventListener(type, listener);		Removes a specific listener function from a specific event type
- * 		same as addEventListener
- * 
- * 	.clearEventListener(type)
- * 		type (string): "mousemove", "mousedown", "mouseup", "mouseclick", "keydown", "keyup"
- * 		Nothing
- * --------------------------------------------------------------------------------------------------------
- * "Private" Properties:
- *		.events;		Instance of Array with keys corresponding to event types (string) to help with event listeners.
- * 		.prints;		Instance of Array with objects corresponding to debug information displayed on screen
+ * "Private" Properties: (AKA not-meant-for-you-to-use, even-less-change)
+ *		.events;		Array with keys corresponding to event types (string) to help with event listeners.
+ * 		.prints;		Array with objects corresponding to debug information displayed on screen
+ * 		.objects;		Array with objects to handle, send draw calls, etc
+ * 			Each object can optionally contain the following functions: draw(delta), update(delta), onMouseMove(x, y), onMouseDown(x, y, button), onMouseUp(x, y, button), 
  */
 
 var eventCandidates = ["mousemove", "mousedown", "mouseup", "mouseclick", "keydown", "keyup"];
@@ -43,9 +56,9 @@ function CanvasController(recipient, width, height) {
 	console.log("Canvas Controller Instance Created");
 	if (recipient instanceof HTMLDivElement) {
 		var local_width = width, local_height = height;
-		if ( typeof(local_width) !== "number" || isNaN(local_width) )
+		if ( typeof(local_width) !== "number" || isNaN(local_width) || local_width == 0 )
 			local_width = 960;
-		if ( typeof(local_height) !== "number" || isNaN(local_height) )
+		if ( typeof(local_height) !== "number" || isNaN(local_height) || local_height == 0 )
 			local_height = 480;
 		
 		Object.defineProperty(this,"canvas",{
@@ -59,7 +72,7 @@ function CanvasController(recipient, width, height) {
 		this.canvas.height = local_height;
 		this.canvas.oncontextmenu = function () { return false; };
 		recipient.appendChild(this.canvas);
-		console.log("Canvas appended to", recipient.id ,"with size",local_width, local_height);
+		console.log("Canvas appended to", recipient.id, "with size", local_width, local_height);
 		
 		Object.defineProperty(this,"ctx",{
 			configurable: false,
@@ -73,31 +86,59 @@ function CanvasController(recipient, width, height) {
 		document.addEventListener("mousedown", function(ev) { CanvasController.prototype.onMouseDown.call(holdThis, ev); }, false);
 		document.addEventListener("mouseup", function(ev) { CanvasController.prototype.onMouseUp.call(holdThis, ev); }, false);
 		
+		
 		if (Timestamper) {
-			this.timestamper = new Timestamper(60,delta => console.log("elapsed!",delta));
+			this.timestamper = new Timestamper(1000,delta => objects.forEach(obj => {
+				if (obj instanceof Object) {
+					if (obj.update instanceof Function)
+						obj.update(delta*this.multiplier);
+					if (obj.draw instanceof Function)
+						obj.draw(delta*this.multiplier);
+				}
+			})});
 		}
 		
 	} else
-		console.error("Canvas recipient:" , recipient, "should be a HTMLDivElement instance. (CanvasController)");
+		console.error("Canvas recipient:" , recipient, "should be a HTMLDivElement instance.");
 }
 
 CanvasController.prototype = {
 	constructor: CanvasController,
 	events: new Array(),
 	prints: new Array(),
-	mouse: {x:960/2, y:480/2},
+	objects: new Array(),
+	mouse: {x:960/2, y:480/2, left:false, middle:false, right:false},
+	multiplier: 1.0,
 	
 	onMouseMove: function (ev) {
 		if (!(this.events["mousemove"] instanceof Array)||(this.events["mousemove"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop))))
-			console.log("Process Mouse Move");
+			objects.forEach(obj => { if (obj instanceof Object && obj.onMouseMove instanceof Function) obj.onMouseMove.call(obj, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop); });
+			//console.log("Process Mouse Move");
 	},
 	onMouseDown: function (ev) {
-		if (!(this.events["mousedown"] instanceof Array)||(this.events["mousedown"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop))))
-			console.log("Process Mouse Down");
+		if (!(this.events["mousedown"] instanceof Array)||(this.events["mousedown"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop)))) {
+			var btnCode = ev.button;
+			switch (btnCode) {
+				case 0: this.mouse.left = true; break;
+				case 1: this.mouse.middle = true; break;
+				case 2:	this.mouse.right = true; break;
+				break;
+			}
+			objects.forEach(obj => { if (obj instanceof Object && obj.onMouseDown instanceof Function) obj.onMouseDown.call(obj, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop); });
+		}
+		//console.log("Process Mouse Down");
 	},
 	onMouseUp: function (ev) {
-		if (!(this.events["mouseup"] instanceof Array)||(this.events["mouseup"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop))))
+		if (!(this.events["mouseup"] instanceof Array)||(this.events["mouseup"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop)))) {
+			var btnCode = ev.button;
+			switch (btnCode) {
+				case 0: this.mouse.left = false; break;
+				case 1: this.mouse.middle = false; break;
+				case 2:	this.mouse.right = false; break;
+				break;
+			}			
 			console.log("Process Mouse Up");
+		}
 	},
 	print: function() {
 		if (this.prints instanceof Array) {
@@ -113,6 +154,19 @@ CanvasController.prototype = {
 		} else 
 			console.error("Error: This instance doesn't have a valid \".prints\" property");
 	},
+	addButton: function (btn) {
+		if (this.objects instanceof Array) {
+			if (GuiButton) {
+				if (btn instanceof GuiButton)
+					this.objects.push(btn);
+				else
+					console.error("Object:" , recipient, "should be a GuiButton instance.");
+			} else
+				console.error("GuiButton.js must be loaded before calling this function");
+		} else
+			console.error("Error: This instance doesn't have a valid \".objects\" property");
+			
+	},
 	addEventListener: function (type, listener) {
 		if (typeof(type) === "string") {
 			var id = eventCandidates.indexOf(type.toLowerCase());
@@ -125,7 +179,7 @@ CanvasController.prototype = {
 						this.events[type.toLowerCase()].push(listener);
 					} else
 						console.error("Specified listener is already connected to the event of type \""+type.toLowerCase()+"\"");
-						// You should not add the same function to the same event, it's looked down upon.
+						// You should not add the same function to the same event, use a god damn loop or something!
 				}
 			} else
 				console.error("No event of type \"" + type.toLowerCase() + "\" in CanvasController");
