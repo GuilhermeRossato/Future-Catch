@@ -45,7 +45,6 @@
  * --------------------------------------------------------------------------------------------------------
  * "Private" Properties: (AKA not-meant-for-you-to-use, even-less-change)
  *		.events;		Array with keys corresponding to event types (string) to help with event listeners.
- * 		.prints;		Array with objects corresponding to debug information displayed on screen
  * 		.objects;		Array with objects to handle, send draw calls, etc
  * 			Each object can optionally contain the following functions: draw(delta), update(delta), onMouseMove(x, y), onMouseDown(x, y, button), onMouseUp(x, y, button), 
  */
@@ -88,14 +87,16 @@ function CanvasController(recipient, width, height) {
 		
 		
 		if (Timestamper) {
-			this.timestamper = new Timestamper(1000,delta => objects.forEach(obj => {
+			this.timestamper = new Timestamper(50,delta => this.objects.forEach(obj => {
 				if (obj instanceof Object) {
 					if (obj.update instanceof Function)
-						obj.update(delta*this.multiplier);
+						obj.update.call(obj, delta*this.multiplier);
+					if (obj.clear instanceof Function)
+						obj.clear.call(obj, this.ctx);
 					if (obj.draw instanceof Function)
-						obj.draw(delta*this.multiplier);
+						obj.draw.call(obj, this.ctx, delta*this.multiplier);
 				}
-			})});
+			}));
 		}
 		
 	} else
@@ -105,14 +106,13 @@ function CanvasController(recipient, width, height) {
 CanvasController.prototype = {
 	constructor: CanvasController,
 	events: new Array(),
-	prints: new Array(),
 	objects: new Array(),
 	mouse: {x:960/2, y:480/2, left:false, middle:false, right:false},
 	multiplier: 1.0,
 	
 	onMouseMove: function (ev) {
 		if (!(this.events["mousemove"] instanceof Array)||(this.events["mousemove"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop))))
-			objects.forEach(obj => { if (obj instanceof Object && obj.onMouseMove instanceof Function) obj.onMouseMove.call(obj, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop); });
+			this.objects.forEach(obj => { if (obj instanceof Object && obj.onMouseMove instanceof Function) obj.onMouseMove.call(obj, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop); });
 			//console.log("Process Mouse Move");
 	},
 	onMouseDown: function (ev) {
@@ -124,9 +124,8 @@ CanvasController.prototype = {
 				case 2:	this.mouse.right = true; break;
 				break;
 			}
-			objects.forEach(obj => { if (obj instanceof Object && obj.onMouseDown instanceof Function) obj.onMouseDown.call(obj, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop); });
+			this.objects.forEach(obj => { if (obj instanceof Object && obj.onMouseDown instanceof Function) obj.onMouseDown.call(obj, btnCode, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop); });
 		}
-		//console.log("Process Mouse Down");
 	},
 	onMouseUp: function (ev) {
 		if (!(this.events["mouseup"] instanceof Array)||(this.events["mouseup"].every(obj => obj.call(this, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop)))) {
@@ -137,22 +136,8 @@ CanvasController.prototype = {
 				case 2:	this.mouse.right = false; break;
 				break;
 			}			
-			console.log("Process Mouse Up");
+			this.objects.forEach(obj => { if (obj instanceof Object && obj.onMouseUp instanceof Function) obj.onMouseUp.call(obj, btnCode, ev.clientX - this.canvas.offsetLeft, ev.clientY - this.canvas.offsetTop); });
 		}
-	},
-	print: function() {
-		if (this.prints instanceof Array) {
-			var i;
-			for (i=0;i<this.prints.length;i++)
-				if (!this.prints[i].enabled)
-					break;
-			if (i > 9) i = 9;
-			this.prints[i] = {enabled: true, life:10000, text:""};
-			for (i=0;i<arguments.length;i++) {
-				text += toString(arguments[i]);
-			}
-		} else 
-			console.error("Error: This instance doesn't have a valid \".prints\" property");
 	},
 	addButton: function (btn) {
 		if (this.objects instanceof Array) {

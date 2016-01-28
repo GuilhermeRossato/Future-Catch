@@ -75,17 +75,11 @@ function Timestamper(interval, updateCallback, drawCallback) {
 			{
 				var count = 0;
 				var deltaMS = leftover-(holdThis.lastEvent - (holdThis.lastEvent = + new Date()));
-				
-				var deltaBEFORE = deltaMS;
 				while ((deltaMS >= interval)&&(count = count + 1))
 					deltaMS -= interval;
-				
-				if (count > 0) {
-					if (updateCallback instanceof Function)
-						updateCallback(count);
-					this.chunksElapsed += count;
-				}
-				//console.log(leftover, holdThis.lastEvent);
+				if ((updateCallback instanceof Function) && (count > 0))
+					updateCallback(count);
+				this.chunksElapsed += count;
 				leftover = deltaMS;
 				window.requestAnimationFrame(step);
 			} else {
