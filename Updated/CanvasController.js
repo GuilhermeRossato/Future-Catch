@@ -59,6 +59,20 @@ function CanvasController(recipient, width, height) {
 			local_width = 960;
 		if ( typeof(local_height) !== "number" || isNaN(local_height) || local_height == 0 )
 			local_height = 480;
+			
+		Object.defineProperty(this,"width",{
+			configurable: false,
+			enumerable: false,
+			get: function() { return (local_width) },
+			set: function(value) { local_width = value; canvas.width = local_width; return value; }
+		});
+			
+		Object.defineProperty(this,"height",{
+			configurable: false,
+			enumerable: false,
+			get: function() { return (local_height) },
+			set: function(value) { local_height = value; canvas.height = local_height; return value; }
+		});
 		
 		Object.defineProperty(this,"canvas",{
 			configurable: false,

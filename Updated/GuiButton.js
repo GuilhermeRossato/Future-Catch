@@ -50,59 +50,21 @@
 
 // Flat UI Buttons concept and colors from: https://github.com/designmodo/Flat-UI
 
-function GuiButton(title, px, py, width, height) {
-	var ancX = "left", ancY = "top";
 	
-	this.px = px;
-	this.py = py;
-	this.width = width;
-	this.height = height;
-	this.text = title;
+if (typeof(defaultSet)!=="function") {
+	defaultSet = (value,defaultValue) => (typeof(value) !== "number" || isNaN(value) || value == 0 )?defaultValue:value;
+}
 	
-	if ( typeof(this.px) !== "number" || isNaN(this.px) || this.px == 0 )
-		this.px = 0;
-	if ( typeof(this.py) !== "number" || isNaN(this.py) || this.py == 0 )
-		this.py = 0;
-	if ( typeof(this.width) !== "number" || isNaN(this.width) || this.width == 0 )
-		this.width = 20+this.text.length*4.71;
-	if ( typeof(this.height) !== "number" || isNaN(this.height) || this.height == 0 )
-		this.height = 20;
-			
-	Object.defineProperty(this,"anchorX",{
-		configurable: false,
-		enumerable: false,
-		get: function() { return ancX; },
-		set: function(value) {
-				value = value.toLowerCase();
-				if (value === "left" || value === "middle" || value === "right")
-					ancX = value;
-				else if (value === "center")
-					ancX = "middle";
-				else
-					console.error("Incorrect parameter to horizontal anchor, candidates are: \"left\", \"middle\", \"right\".");
-			}
-	});
-	Object.defineProperty(this,"anchorY",{
-		configurable: false,
-		enumerable: false,
-		get: function() { return ancY; },
-		set: function(value) {
-				value = value.toLowerCase();
-				if (value === "top" || value === "middle" || value === "bottom")
-					ancY = value;
-				else if (value === "center")
-					ancY = "middle";
-				else
-					console.error("Incorrect parameter to vertical anchor, candidates are: \"top\", \"middle\", \"bottom\".");
-			}
-	});
+function GuiButton(text, x, y, width, height) {
+	this.text = text;
+	
+	this.box = new GuiBox(x, y, width+3, height+3);
 	Object.defineProperty(this,"boundingRect",{
 		configurable: false,
 		enumerable: false,
-		get: function() { return {top:this.py, left:this.px, right:this.px+this.width, bottom:this.py+this.height}; },
-		set: function(value) { console.error("boundingRect is unassignable. Use .px, .py, .width and .height"); }
+		get: function() { return this.box; },
+		set: function(value) { console.error("boundingRect is unassignable"); }
 	});
-	console.log(this.boundingRect);
 	Object.defineProperty(this,"isToggle",{
 		configurable: false,
 		enumerable: false,
@@ -114,6 +76,7 @@ function GuiButton(title, px, py, width, height) {
 				state -= 4;
 		}
 	});
+	console.log("GuiButton object created");
 }
 
 GuiButton.prototype = {
@@ -123,7 +86,7 @@ GuiButton.prototype = {
 	graphic: {roundness: 5, shadow: 3, color:"#33495E", shadowColor:"#222", overColor:"#2E4154", textColor:"#EEE"},
 	
 	onMouseMove: function (x, y) {
-		var isInside = this.checkBounds(x, y);
+		var isInside = this.box.checkBounds(x, y);
 		if ((this.state === 0 || this.state === 4) && isInside) {
 			this.state = 1;
 		} else if ((this.state === 1 || this.state === 5) && (!isInside)) {
@@ -131,23 +94,23 @@ GuiButton.prototype = {
 		}
 	},
 	onMouseDown: function (btnId, x, y) {
-		if ((btnId === 0) && (this.state === 1) && this.checkBounds(x, y)) {
+		if ((btnId === 0) && (this.state === 1) && this.box.checkBounds(x, y)) {
 			this.state = 2;
 			this.isDown = true;
 			if (this.onClickDown instanceof Function)
-				this.onClickDown(x-this.px, y-this.py);
+				this.onClickDown(x-this.box.left, y-this.box.top);
 		}
 	},
 	onMouseUp: function (btnId, x, y) {
 		if (this instanceof GuiButton)
 		{
 			if (btnId === 0) {
-				var isInside = this.checkBounds(x, y);
+				var isInside = this.box.checkBounds(x, y);
 				if (this.state === 2) {
 					if (isInside) {
 						this.isDown = false;
 						if (this.onClick instanceof Function)
-							this.onClick(x-this.px, y-this.py);
+							this.onClick(x-this.box.left, y-this.box.top);
 					}
 				}
 				this.state = isInside?1:0;
@@ -156,24 +119,29 @@ GuiButton.prototype = {
 			console.error("Method should run from an instance of GuiButton. use .call(instance of GuiButton, rest, of, parameters)");
 	},
 	clear: function(ctx) {
-		var rect = this.boundingRect;
-		ctx.clearRect(rect.left-1, rect.top-1, this.width+this.graphic.shadow+2, this.height+this.graphic.shadow+2);
+		ctx.clearRect(this.box.left-1, this.box.top-1, this.box.width+this.graphic.shadow+2, this.box.height+this.graphic.shadow+2);
 	},
 	draw: function(ctx) {
 		if (this instanceof GuiButton) {
+			if (this.test instanceof Function) {
+			} else {
+				this.test = new Function();
+				console.log(this.box.width);
+				this.box.width = 100;
+				console.log("set");
+			}
 			if (ctx instanceof CanvasRenderingContext2D) {
-				var rect = this.boundingRect;
 				function dr(roundness) {
 					ctx.beginPath();
-					ctx.moveTo(rect.left+roundness, rect.top);
-					ctx.lineTo(rect.right-roundness, rect.top);
-					ctx.quadraticCurveTo(rect.right, rect.top, rect.right, rect.top+roundness);
-					ctx.lineTo(rect.right, rect.bottom-roundness);
-					ctx.quadraticCurveTo(rect.right, rect.bottom, rect.right-roundness, rect.bottom);
-					ctx.lineTo(rect.left+roundness, rect.bottom);
-					ctx.quadraticCurveTo(rect.left, rect.bottom, rect.left, rect.bottom-roundness);
-					ctx.lineTo(rect.left, rect.top+roundness);
-					ctx.quadraticCurveTo(rect.left, rect.top, rect.left+roundness, rect.top);
+					ctx.moveTo(this.box.left+roundness, this.box.top);
+					ctx.lineTo(this.box.right-roundness, this.box.top);
+					ctx.quadraticCurveTo(this.box.right, this.box.top, this.box.right, this.box.top+roundness);
+					ctx.lineTo(this.box.right, this.box.bottom-roundness);
+					ctx.quadraticCurveTo(this.box.right, this.box.bottom, this.box.right-roundness, this.box.bottom);
+					ctx.lineTo(this.box.left+roundness, this.box.bottom);
+					ctx.quadraticCurveTo(this.box.left, this.box.bottom, this.box.left, this.box.bottom-roundness);
+					ctx.lineTo(this.box.left, this.box.top+roundness);
+					ctx.quadraticCurveTo(this.box.left, this.box.top, this.box.left+roundness, this.box.top);
 				}
 				
 				ctx.save();
@@ -198,26 +166,25 @@ GuiButton.prototype = {
 				ctx.textAlign="center";
 				ctx.textBaseline="middle";
 				ctx.fillStyle = this.graphic.textColor;
-				ctx.fillText(this.text, (rect.left+rect.right)/2, (rect.top+rect.bottom)/2);
+				ctx.fillText(this.text, (this.box.left+this.box.right)/2, (this.box.top+this.box.bottom)/2);
 				ctx.restore();
 			} else 
 				console.error("First parameter is supposed to be instance of CanvasRenderingContext2D:",ctx);
 		} else
 			console.error("Method should run from an instance of GuiButton. use .call(instance of GuiButton, rest, of, parameters)");
 	},
-	autosize: function(ctx) {
+	resize: function(ctx) {
 		if (this instanceof GuiButton) {
 			if (ctx instanceof CanvasRenderingContext2D)
-				return (this.width = 20+ctx.measureText(this.text).width);
+				return (this.box.width = 20+ctx.measureText(this.text).width);
 			else
-				return (this.width = 20+text.length*4.71); // magic number = approximation
+				return (this.box.width = 20+text.length*4.71); // magic number = approximation
 		} else
 			console.error("Method should run from an instance of GuiButton. use .call(instance of GuiButton, rest, of, parameters)");
 	},
 	checkBounds: function(x, y) {
 		if (this instanceof GuiButton) {
-			var rect = this.boundingRect;
-			return ((x > rect.left) && (x < rect.right+this.graphic.shadow) && (y > rect.top) && (y < rect.bottom+this.graphic.shadow)); 
+			return ((x > this.box.left) && (x < this.box.right+this.graphic.shadow) && (y > this.box.top) && (y < this.box.bottom+this.graphic.shadow)); 
 		} else
 			console.error("Method should run from an instance of GuiButton. use .call(instance of GuiButton, rest, of, parameters)");
 	}
