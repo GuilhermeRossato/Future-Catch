@@ -35,9 +35,9 @@
  */
 	
 if (typeof(defaultSet)!=="function") {
-	defaultSet = (value,defaultValue) => (typeof(value) !== "number" || isNaN(value) || value == 0 )?defaultValue:value;
+	defaultSet = (value,defaultValue) => ((typeof(value) !== "number" || isNaN(value) || value == 0)?defaultValue:value);
 }
-	
+
 function GuiBox(x, y, width, height) {
 	var local_left = defaultSet(x, 0),
 		local_top = defaultSet(y, 0),

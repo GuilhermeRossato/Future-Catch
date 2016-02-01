@@ -93,7 +93,6 @@ function CanvasController(recipient, width, height) {
 			value: this.canvas.getContext("2d"),
 			writable: false
 		});
-		
 		var holdThis = this;
 		document.addEventListener("mousemove", function(ev) { CanvasController.prototype.onMouseMove.call(holdThis, ev); }, false);
 		document.addEventListener("mousedown", function(ev) { CanvasController.prototype.onMouseDown.call(holdThis, ev); }, false);
@@ -154,16 +153,17 @@ CanvasController.prototype = {
 		}
 	},
 	addButton: function (btn) {
-		if (this.objects instanceof Array) {
+		if (this instanceof CanvasController) {
 			if (GuiButton) {
-				if (btn instanceof GuiButton)
+				if (btn instanceof GuiButton) {
 					this.objects.push(btn);
-				else
+					return btn
+				} else
 					console.error("Object:" , recipient, "should be a GuiButton instance.");
 			} else
 				console.error("GuiButton.js must be loaded before calling this function");
 		} else
-			console.error("Error: This instance doesn't have a valid \".objects\" property");
+			console.error("Function must run from an instance of GuiBox");
 			
 	},
 	addEventListener: function (type, listener) {
@@ -191,7 +191,6 @@ CanvasController.prototype = {
 			if (this.events[type.toLowerCase()] instanceof Array) {
 				var id = this.events[type.toLowerCase()].indexOf(listener); 
 				if (id !== -1) {
-					console.log("deleting id ",id);
 					delete this.events[type.toLowerCase()][id];
 				}
 			}

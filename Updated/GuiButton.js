@@ -55,10 +55,15 @@ if (typeof(defaultSet)!=="function") {
 	defaultSet = (value,defaultValue) => (typeof(value) !== "number" || isNaN(value) || value == 0 )?defaultValue:value;
 }
 	
-function GuiButton(text, x, y, width, height) {
+function GuiButton(text, x, y, width, height, ctx) {
 	this.text = text;
-	
-	this.box = new GuiBox(x, y, width+3, height+3);
+	this.box = new GuiBox(x, y);
+	if (ctx instanceof CanvasRenderingContext2D) {
+		ctx.font = this.graphic.font;
+		this.box.width = this.graphic.margin.left+this.graphic.margin.right+ctx.measureText(this.text).width;
+	} else
+		this.box.width = defaultSet(width+this.graphic.shadow,this.graphic.margin.left+this.graphic.margin.right+80);
+	this.box.height = defaultSet(height,20)+this.graphic.shadow;
 	Object.defineProperty(this,"boundingRect",{
 		configurable: false,
 		enumerable: false,
@@ -76,14 +81,13 @@ function GuiButton(text, x, y, width, height) {
 				state -= 4;
 		}
 	});
-	console.log("GuiButton object created");
 }
 
 GuiButton.prototype = {
 	constructor: GuiButton,
 	state: 0,
 	isDown: false,
-	graphic: {roundness: 5, shadow: 3, color:"#33495E", shadowColor:"#222", overColor:"#2E4154", textColor:"#EEE"},
+	graphic: {roundness: 5, shadow: 3, color:"#33495E", shadowColor:"#222", overColor:"#2E4154", textColor:"#EEE", margin:{left: 10, right:10}, font:"14px Arial"},
 	
 	onMouseMove: function (x, y) {
 		var isInside = this.box.checkBounds(x, y);
@@ -116,20 +120,13 @@ GuiButton.prototype = {
 				this.state = isInside?1:0;
 			}
 		} else
-			console.error("Method should run from an instance of GuiButton. use .call(instance of GuiButton, rest, of, parameters)");
+			console.error("Function must run from an instance of GuiButton");
 	},
 	clear: function(ctx) {
 		ctx.clearRect(this.box.left-1, this.box.top-1, this.box.width+this.graphic.shadow+2, this.box.height+this.graphic.shadow+2);
 	},
 	draw: function(ctx) {
 		if (this instanceof GuiButton) {
-			if (this.test instanceof Function) {
-			} else {
-				this.test = new Function();
-				console.log(this.box.width);
-				this.box.width = 100;
-				console.log("set");
-			}
 			if (ctx instanceof CanvasRenderingContext2D) {
 				function dr(roundness) {
 					ctx.beginPath();
@@ -166,26 +163,27 @@ GuiButton.prototype = {
 				ctx.textAlign="center";
 				ctx.textBaseline="middle";
 				ctx.fillStyle = this.graphic.textColor;
+				ctx.font = this.graphic.font;
 				ctx.fillText(this.text, (this.box.left+this.box.right)/2, (this.box.top+this.box.bottom)/2);
 				ctx.restore();
 			} else 
 				console.error("First parameter is supposed to be instance of CanvasRenderingContext2D:",ctx);
 		} else
-			console.error("Method should run from an instance of GuiButton. use .call(instance of GuiButton, rest, of, parameters)");
+			console.error("Function must run from an instance of GuiButton");
 	},
-	resize: function(ctx) {
+	autosize: function(ctx) {
 		if (this instanceof GuiButton) {
 			if (ctx instanceof CanvasRenderingContext2D)
-				return (this.box.width = 20+ctx.measureText(this.text).width);
+				return (this.box.width = this.graphic.margin.left+this.graphic.margin.right+ctx.measureText(this.text).width);
 			else
-				return (this.box.width = 20+text.length*4.71); // magic number = approximation
+				return (this.box.width = this.graphic.margin.left+this.graphic.margin.right+text.length*4.71); // magic number = approximation
 		} else
-			console.error("Method should run from an instance of GuiButton. use .call(instance of GuiButton, rest, of, parameters)");
+			console.error("Function must run from an instance of GuiButton");
 	},
 	checkBounds: function(x, y) {
 		if (this instanceof GuiButton) {
 			return ((x > this.box.left) && (x < this.box.right+this.graphic.shadow) && (y > this.box.top) && (y < this.box.bottom+this.graphic.shadow)); 
 		} else
-			console.error("Method should run from an instance of GuiButton. use .call(instance of GuiButton, rest, of, parameters)");
+			console.error("Function must run from an instance of GuiButton");
 	}
 }
